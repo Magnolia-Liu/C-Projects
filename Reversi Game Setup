@@ -1,0 +1,209 @@
+//this project will be the basic setup for the reversi game, including printing the board, checking for move legality, and flipping tiles
+
+#include "reversi.h"
+
+#include <stdio.h>
+
+void printBoard(char board[][26], int n) {
+  // 1st cell = ' '
+  // we need to print out up to 26 letters (could make entire alphabet array)
+  // copy n letters from the string and then copy to the board array
+  // WBBW should be in the middle, so they need to be n/2 and n/2+1 for row and column
+  //everything else fill with U
+  // sets up the initial board upon first call in main, then prints board with changes caused by the player
+  
+  const char alphabet[] = "abcdefghijklmnopqrstuvwxyz";
+  printf("  ");
+  for (int i = 0; i < n; i++) {
+    printf("%c", alphabet[i]);
+  }
+  for (int row = 0; row < n; row++) {
+    printf("\n%c ", alphabet[row]);
+    for (int col = 0; col < n; col++) {
+      if (board[row][col] != 'W' && board[row][col] != 'B') {
+        if ((col == n / 2 - 1 && row == n / 2 - 1) ||
+            (col == n / 2 && row == n / 2)) {
+          board[row][col] = 'W';
+        } else if ((col == n / 2 && row == n / 2 - 1) ||
+                   (col == n / 2 - 1 && row == n / 2)) {
+          board[row][col] = 'B';
+        } else {
+          board[row][col] = 'U';
+        }
+      }
+      printf("%c", board[row][col]);
+    }
+  }
+}
+
+bool positionInBounds(int n, int row, int col) {
+//checks if move is in bounds of the board
+  
+  bool inbounds = true;
+  if (row > n || row < 0) {
+    inbounds = false;
+  }
+  if (col > n || col < 0) {
+    inbounds = false;
+  }
+  return inbounds;
+}
+
+bool checkLegalInDirection(char board[][26], int n, int row, int col,
+                           char colour, int deltaRow, int deltaCol) {
+  // delta means direction
+  // example - playing as white playe:
+  // Place the white piece (from player prompt) - scan in eight directions, there needs to be at least one black piece found
+  // start scanning in direction of the black piece that was found - if white is found at the end of the scan then the move is valid
+  // if U is found then the move is invalid
+
+  bool validity = false;
+  int i = 0;
+  int j = 0;
+
+  i = row + deltaRow;
+  j = col + deltaCol;
+
+  if (board[i][j] == 'U') {
+    validity = 0;
+  } else if (colour == 'W' && board[i][j] == 'B') { // playing as white player
+    while (positionInBounds(n, i, j) && board[i][j] == 'B') {
+      i += deltaRow;
+      j += deltaCol;
+      if (positionInBounds(n, i, j) &&
+          board[i - deltaRow][j - deltaCol] == 'B' &&
+          board[i][j] == 'W') {  // the code will check if the player 'standing' on Black, then check whats
+                                 // in front of the player- if white, then move is valid and exit the loop
+                                // else, invalid and exit the loop
+        validity = true;
+      }
+    }
+  } else if (colour == 'B' && board[i][j] == 'W') { // playing as black player
+    while (positionInBounds(n, i, j) && board[i][j] == 'W') {
+      i += deltaRow;
+      j += deltaCol;
+      if (positionInBounds(n, i, j) &&
+          board[i - deltaRow][j - deltaCol] == 'W' && board[i][j] == 'B') {
+        validity = true;
+      }
+    }
+  }
+  return validity;
+}
+
+
+
+int main(void) {
+  int n = 0;
+  printf("Enter the board dimension: ");
+  scanf("%d", &n);
+  char board[26][26] = {"b"};
+  printBoard(board, n);
+
+  // player is allowed to make mutliple moves to change the initial board, these moves will not flip rows and columns of tiles however
+  printf("\nEnter board configuration: \n");
+  char colour = ' ', charRow = ' ', charCol = ' ';
+  int row = 0;
+  int col = 0;
+  scanf(" %c%c%c", &colour, &charRow, &charCol);
+  while (colour != '!' && charRow != '!' && charCol != '!') { // once the player enters !!! they will no longer be prompted to make more moves
+    row = charRow - 97;
+    col = row - (charRow - charCol); // convert char to int
+    if (colour == 'W') {
+      board[row][col] = 'W';
+    } else if (colour == 'B') {
+      board[row][col] = 'B';
+    }
+    scanf(" %c%c%c", &colour, &charRow, &charCol);
+  }
+  printBoard(board, n);
+
+
+ // the code will scan the board for all possible valid moves the white player can make and print them out from the top left corner down to the bottom right corner of the board
+  colour = 'W';
+  int deltaRow = 0, deltaCol = 0, validated = 0;
+  int Directions[][8] = {{-1, -1, 0, 1, 1, 1, 0, -1},
+                         {0, 1, 1, 1, 0, -1, -1, -1}};
+  
+  printf("Available moves for W: \n");
+  for (row = 0; row < n; row++) {
+    for (col = 0; col < n; col++) {
+      if (board[row][col] == 'U') {
+        validated = 0;
+        for (int i = 0; i < 8 && validated == 0; i++) {
+          deltaRow = Directions[0][i];  // sets direction to scan row
+          deltaCol = Directions[1][i];  // sets directions to scan col
+          if (checkLegalInDirection(board, n, row, col, colour, deltaRow,
+                                    deltaCol)) {
+            row += 97;  // convert to character
+            col += 97;
+
+            // once already confirmed its a valid move it won't scan in that direction anymore
+            printf("%c%c\n", row, col);
+            validated = 1;
+            row -= 97;  // convert back to integer
+            col -= 97;
+          }
+        }
+      }
+    }
+  }
+  validated = 0;
+
+// the code will scan the board for all possible valid moves the bleck player can make and print them out from the top left corner down to the bottom right corner of the board
+  colour = 'B';
+  printf("Available moves for B: \n");
+  for (row = 0; row < n; row++) {
+    for (col = 0; col < n; col++) {
+      if (board[row][col] == 'U') {
+        validated = 0;
+        for (int i = 0; i < 8; i++) {
+          deltaRow = Directions[0][i];  // sets direction to scan row
+          deltaCol = Directions[1][i];  // sets directions to scan col
+
+          if (checkLegalInDirection(board, n, row, col, colour, deltaRow,
+                                    deltaCol) &&
+              validated == 0) {
+            row += 97;
+            col += 97;
+            printf("%c%c\n", row, col);
+            validated = 1;
+            row -= 97;  // convert back to integer
+            col -= 97;
+          }
+        }
+      }
+    }
+  }
+
+prompts the player to make a move as any colour
+  printf("Enter a move: \n");
+  scanf(" %c%c%c", &colour, &charRow, &charCol);
+
+//checks if the move is valid, and then flips all the tiles to make a new board
+  validated = 0;
+  for (int i = 0; i < 8; i++) {
+    row = charRow - 97;
+    col = row - (charRow - charCol);
+    deltaRow = Directions[0][i];  // sets direction to scan row
+    deltaCol = Directions[1][i];  // sets directions to scan col
+    if (checkLegalInDirection(board, n, row, col, colour, deltaRow, deltaCol)) {
+      do {
+        board[row][col] = colour;
+        row += deltaRow;
+        col += deltaCol;
+      } while (board[row][col] != colour);
+      validated = 1;
+    }
+  }
+  if (validated == 1) {
+    printf("Valid move. \n");
+  } else if (validated == 0) {
+    printf("Invalid move. \n");
+  }
+
+  printBoard(board, n); // prints the new board
+  
+
+  return 0;
+}
