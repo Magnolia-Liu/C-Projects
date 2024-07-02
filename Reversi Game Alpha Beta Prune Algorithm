@@ -1,11 +1,9 @@
-
+//this project uses a mini-max alpha beta prune algorithm to play the game reversi
+//it was built to play against other algorithms developed by the university of toronto teaching team and successfully won against 3/4 games against their AI
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "lab8part2.h"
-#include "liblab8part2.h"
 
 void printBoard(char board[][26], int n) {
   const char alphabet[] = "abcdefghijklmnopqrstuvwxyz";
@@ -254,6 +252,7 @@ int makeMove(const char board[][26], int n, char turn, int *row, int *col) {
 
   return 0;
 }
+
 
 // user interface to play the game
 int main(void) {
