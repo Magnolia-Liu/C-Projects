@@ -1,0 +1,376 @@
+
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "lab8part2.h"
+#include "liblab8part2.h"
+
+void printBoard(char board[][26], int n) {
+  const char alphabet[] = "abcdefghijklmnopqrstuvwxyz";
+  printf("  ");
+  for (int i = 0; i < n; i++) {
+    printf("%c", alphabet[i]);
+  }
+  for (int row = 0; row < n; row++) {
+    printf("\n%c ", alphabet[row]);
+    for (int col = 0; col < n; col++) {
+      printf("%c", board[row][col]);
+    }
+  }
+  printf("\n");
+}
+
+bool positionInBounds(int n, int row, int col) {
+  bool inbounds = true;
+  if (row > n || row < 0) {
+    inbounds = false;
+  }
+  if (col > n || col < 0) {
+    inbounds = false;
+  }
+  return inbounds;
+}
+bool CheckGameEnd(char board[][26], int n) {
+  int Directions[][8] = {{-1, -1, 0, 1, 1, 1, 0, -1},
+                         {0, 1, 1, 1, 0, -1, -1, -1}};
+  int deltaRow = 0, deltaCol = 0;
+  bool GameFinished = true;  // assume game has finished
+  int validated = 0;
+  for (int row = 0; row < n; row++) {
+    for (int col = 0; col < n; col++) {
+      if (board[row][col] ==
+          'U') {  // first checks if there is board is full or not, if full,
+                  // game has finished (true)
+        // if the board is not full, check if there are any remaining moves
+        // yet
+        for (int i = 0; i < 8 && validated == 0; i++) {
+          deltaRow = Directions[0][i];
+          deltaCol = Directions[1][i];
+          if (checkLegalInDirection(board, 8, row, col, 'W', deltaRow,
+                                    deltaCol) ||
+              checkLegalInDirection(board, 8, row, col, 'B', deltaRow,
+                                    deltaCol)) {
+            GameFinished = false;
+            validated = 1;
+            // if there are remaining moves, then the game has not finished
+            // (false)
+          }
+        }
+      }
+    }
+  }
+  return GameFinished;
+}
+bool checkLegalInDirection(char board[][26], int n, int row, int col,
+                           char colour, int deltaRow, int deltaCol) {
+  bool validity = false;
+  int i = 0;
+  int j = 0;
+  // 1
+  i = row + deltaRow;
+  j = col + deltaCol;
+
+  if (board[i][j] == 'U') {
+    validity = 0;
+  } else if (colour == 'W' && board[i][j] == 'B') {
+    while (positionInBounds(n, i, j) && board[i][j] == 'B') {
+      i += deltaRow;
+      j += deltaCol;
+      if (positionInBounds(n, i, j) &&
+          board[i - deltaRow][j - deltaCol] == 'B' &&
+          board[i][j] == 'W') {  // check if i'm standing on B, then check whats
+                                 // in front of me
+        validity = true;
+      }
+    }
+  } else if (colour == 'B' && board[i][j] == 'W') {
+    while (positionInBounds(n, i, j) && board[i][j] == 'W') {
+      i += deltaRow;
+      j += deltaCol;
+      if (positionInBounds(n, i, j) &&
+          board[i - deltaRow][j - deltaCol] == 'W' && board[i][j] == 'B') {
+        validity = true;
+      }
+    }
+  }
+  return validity;
+}
+
+void ComputerMove(char board[][26], int n, int row, int col, char colour) {
+  int Directions[][8] = {{-1, -1, 0, 1, 1, 1, 0, -1},
+                         {0, 1, 1, 1, 0, -1, -1, -1}};
+  int deltaRow = 0, deltaCol = 0;
+  for (int i = 0; i < 8; i++) {
+    // 0 - (97-99)
+    deltaRow = Directions[0][i];  // sets direction to scan row
+    deltaCol = Directions[1][i];  // sets directions to scan col
+    if (checkLegalInDirection(board, n, row, col, colour, deltaRow, deltaCol)) {
+      do {
+        board[row][col] = colour;
+        row += deltaRow;
+        col += deltaCol;
+      } while (board[row][col] != colour);
+    }
+  }
+}
+
+int scanBoard(char board[][26], int n, int numChildren, int *Children,
+              char turn) {
+  int Directions[][8] = {{-1, -1, 0, 1, 1, 1, 0, -1},
+                         {0, 1, 1, 1, 0, -1, -1, -1}};
+  int j = 0, deltaRow = 0, deltaCol = 0, validated = 0;
+  for (int row = 0; row < n; row++) {  // black is maximizing, white
+                                       // is minimzing
+    for (int col = 0; col < n; col++) {
+      if (board[row][col] == 'U') {
+        validated = 0;
+        for (int i = 0; i < 8 && validated == 0;
+             i++) {  // scan position eight times - find first legal
+                     // move
+          deltaRow = Directions[0][i];  // sets direction to scan row
+          deltaCol = Directions[1][i];  // sets directions to scan col
+          if (checkLegalInDirection(board, n, row, col, turn, deltaRow,
+                                    deltaCol)) {
+            *(Children + j) = row;
+            *(Children + j + 60) = col;
+            j += 1;
+            validated = 1;
+            numChildren += 1;
+          }
+        }
+      }  // now we have an array full of the children - ask tyra about
+         // how to do it properly
+    }
+  }
+  return numChildren;
+}
+int FinalScore(char board[][26], int n, char colour) {
+  // calculates score of move for computer
+  int score = 0;
+  for (int row = 0; row < n; row++) {  // black is maximizing, white
+                                       // is minimzing
+    for (int col = 0; col < n; col++) {
+      if (board[row][col] == colour) score += 1;
+    }
+  }
+
+  return score;
+}
+
+//makes a copy of the board
+void copyBoard(char src[26][26], char dest[26][26], int n) {
+  for (int row = 0; row < n; row++) {
+    for (int col = 0; col < n; col++) {
+      dest[row][col] = src[row][col];
+    }
+  }
+}
+
+//calculates the score of a potential move 
+int heuristic(char board[][26], int n, char turn) {
+  char opponent = 'B';
+  if (turn == 'B') opponent = 'W';
+  int ourScore = FinalScore(board, n, turn);
+  int opponentScore = FinalScore(board, n, opponent);
+  return (ourScore - opponentScore);
+}
+
+//recursive minimax alpha beta prune function to find optimal move score
+int minimaxValue(char board[][26], int n, char originalTurn, char currentTurn,
+                 int searchDepth) {
+  if ((searchDepth == 6) ||
+      CheckGameEnd(board, n))  // Change to desired depth lookahead
+  {
+    return heuristic(board, n, originalTurn); // final predicted points after the move
+  }
+
+  int Children[2][60];
+  int numChildren = 0;
+  char opponent = 'B';
+  if (currentTurn == 'B') opponent = 'W';
+  numChildren = scanBoard(board, n, numChildren, *Children, currentTurn);
+  if (numChildren == 0)  // if no moves skip to next player's turn
+  {
+    return minimaxValue(board, n, originalTurn, opponent, searchDepth + 1);
+  } else {
+    // Remember the best child aka move
+    int bestChildVal = -99999;                              // for finding max
+    if (originalTurn != currentTurn) bestChildVal = 99999;  // for finding min
+    // Try out every single move
+    for (int i = 0; i < numChildren; i++) {
+      // Apply the move to a new board
+      char tempBoard[26][26];
+      copyBoard(board, tempBoard, n);
+      ComputerMove(tempBoard, n, Children[0][i], Children[1][i], currentTurn);
+      // Recursive call
+      int val =
+          minimaxValue(tempBoard, n, originalTurn, opponent, searchDepth + 1);
+      // Remember best move
+      if (originalTurn == currentTurn) {
+        // Remember max if it's the originator's turn
+        if (val > bestChildVal) bestChildVal = val;
+      } else {
+        // Remember min if it's opponent turn
+        if (val < bestChildVal) bestChildVal = val;
+      }
+    }
+    return bestChildVal;
+  }
+  return -1;  // Should never get here
+}
+
+//calls minimax ab prune algorithm and plays optimal move on the board
+int makeMove(const char board[][26], int n, char turn, int *row, int *col) {
+  int Children[2][60];
+  int numChildren;
+  char Opponent = 'B';
+  if (turn == 'B') Opponent = 'W';
+  numChildren = scanBoard(board, n, 0, *Children, turn);
+  if (numChildren == 0) {  // if no children return -1
+    *row = -1;
+    *col = -1;
+  } else {
+    int BestChildVal = -99999;
+    int bestX = Children[0][0], bestY = Children[1][0];
+    // try out every singlemove
+    for (int i = 0; i < numChildren; i++) {
+      // apply the move to a new board
+      char tempBoard[26][26];
+      copyBoard(board, tempBoard, n);
+      ComputerMove(tempBoard, n, Children[0][i], Children[1][i], turn);
+      int val = minimaxValue(tempBoard, n, turn, Opponent, 1);
+      // Remember location of best move
+      if (val > BestChildVal) {
+        BestChildVal = val;
+        bestX = Children[0][i];
+        bestY = Children[1][i];
+      }
+    }
+    *col = bestY;
+    *row = bestX;  // Return the best x/y on board
+  }
+
+  return 0;
+}
+
+// user interface to play the game
+int main(void) {
+  int n = 0;
+  char board[26][26] = {"b"};
+  printf("Enter the board dimension: ");
+  scanf("%d", &n);
+  for (int i = 0; i < n; i++) {
+  }
+  for (int row = 0; row < n; row++) {
+    for (int col = 0; col < n; col++) {
+      if ((col == n / 2 - 1 && row == n / 2 - 1) ||
+          (col == n / 2 && row == n / 2)) {
+        board[row][col] = 'W';
+      } else if ((col == n / 2 && row == n / 2 - 1) ||
+                 (col == n / 2 - 1 && row == n / 2)) {
+        board[row][col] = 'B';
+      } else {
+        board[row][col] = 'U';
+      }
+    }
+  }
+
+  char colour = ' ';
+  printf("Computer plays (B/W): ");
+  scanf(" %c", &colour);
+
+  printBoard(board, n);
+  int deltaRow = 0, deltaCol = 0, validated = 0;
+  int Directions[][8] = {{-1, -1, 0, 1, 1, 1, 0, -1},
+                         {0, 1, 1, 1, 0, -1, -1, -1}};
+  int row = 0;
+  int col = 0;
+  char PlayerColour = 'W';
+  if (colour == 'B') {
+    makeMove(board, n, colour, &row, &col);
+    printf("I play %c %c.", row + 'a', col + 'a');
+
+    ComputerMove(board, n, row, col, colour);
+
+    printBoard(board, n);
+  } else if (colour == 'W') {
+    PlayerColour = 'B';
+  }
+  while (CheckGameEnd(board, n) == false && validated != -1) {
+    validated = 0;
+    for (row = 0; row < n && validated == 0; row++) {
+      for (col = 0; col < n && validated == 0; col++) {
+        if (board[row][col] == 'U') {
+          for (int i = 0; i < 8 && validated == 0;
+               i++) {  // scan position eight times - find first legal move
+            deltaRow = Directions[0][i];  // sets direction to scan row
+            deltaCol = Directions[1][i];  // sets directions to scan col
+            if (checkLegalInDirection(board, n, row, col, PlayerColour,
+                                      deltaRow, deltaCol)) {
+              validated = 1;
+            }
+          }
+        }
+      }
+    }
+    if (validated == 0) {
+      printf("%c player has no valid move.\n", PlayerColour);
+    } else if (validated == 1) {
+      validated = -1;
+      findSmarterMove(board, n, PlayerColour, &row, &col);
+      printf("Testing AI move (row, col): %c%c\n", row + 'a', col + 'a');
+
+      if (board[row][col] == 'U' && positionInBounds(n, row, col)) {
+        for (int i = 0; i < 8; i++) {   // scan position eight times
+          deltaRow = Directions[0][i];  // sets direction to scan row
+          deltaCol = Directions[1][i];  // sets directions to scan col
+
+          if (checkLegalInDirection(
+                  board, n, row, col, PlayerColour, deltaRow,
+                  deltaCol)) {  // anytime direction is legal, flip tiles
+            do {
+              board[row][col] = PlayerColour;
+              row += deltaRow;
+              col += deltaCol;
+            } while (board[row][col] != PlayerColour);
+            validated = 1;  // confirms the move is legal
+          }
+        }
+      }
+      if (validated == 1) {
+        printBoard(board, n);
+      } else if (validated == -1) {
+        printf("Invalid move.\n");
+        printf("%c player wins.", colour);
+      }
+    }
+    if (CheckGameEnd(board, n) == false && validated != -1) {
+      makeMove(board, n, colour, &row, &col);
+      printf("I play %c %c.", row + 'a', col + 'a');
+      ComputerMove(board, n, row, col, colour);
+      printBoard(board, n);
+    }
+  }
+  int Bscore = 0, Wscore;
+  for (row = 0; row < n; row++) {
+    for (col = 0; col < n; col++) {
+      if (board[row][col] == 'B') {
+        Bscore += 1;
+      } else if (board[row][col] == 'W') {
+        Wscore += 1;
+      }
+    }
+  }
+  if (validated == 1) {
+    if (Bscore > Wscore) {
+      printf("B player wins.\n");
+    } else if (Bscore < Wscore) {
+      printf("W player wins.\n");
+    } else if (Bscore == Wscore) {
+      printf("Draw!\n");
+    }
+  }
+  return 0;
+}
